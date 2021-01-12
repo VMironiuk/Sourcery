@@ -1173,6 +1173,34 @@ class ParserComposerSpec: QuickSpec {
                         expect(types.last?.variables.first?.type).to(equal(expectedBar))
                         expect(types.last?.variables.first?.definedInType).to(equal(expectedFoo))
                     }
+
+                    it("resolves variable type correctly") {
+                        let expectedBar = Struct(name: "Bar", variables: [
+                                                    Variable(name: "bat", typeName: TypeName("Int"), type: nil, accessLevel: (.internal, .none), definedInTypeName: TypeName("Foo.Bar"))
+                        ])
+                        expectedBar.module = "Foo"
+
+                        let expectedFoo = Struct(name: "Foo", variables: [Variable(name: "bar", typeName: TypeName("Bar"), type: expectedBar, accessLevel: (.internal, .none), definedInTypeName: TypeName("Foo"))], containedTypes: [expectedBar])
+                        expectedFoo.module = "Foo"
+
+                        let types = parseModules(
+                            (name: "Foo", contents:
+                                """
+                                struct Foo {
+                                    struct Bar {
+                                        let bat: Int
+                                    }
+                                    let bar: Bar
+                                }
+                                """
+                            ))
+
+                        expect(types).to(equal([expectedFoo, expectedBar]))
+
+                        let parsedFoo = types.first(where: { $0.globalName == "Foo.Foo" })
+                        expect(parsedFoo).to(equal(expectedFoo))
+                        expect(parsedFoo?.variables.first?.type).to(equal(expectedBar))
+                    }
                 }
 
                 context("given free function") {
